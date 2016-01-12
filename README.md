@@ -30,4 +30,4 @@
 
 ### Lisence
 
-MIT
+The MIT License (MIT)
