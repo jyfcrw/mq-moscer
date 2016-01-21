@@ -1,4 +1,5 @@
 var mosca = require('mosca'),
+    http  = require('http'),
     redis = require('redis'),
     request = require('request'),
     cache = require('memory-cache'),
@@ -6,8 +7,7 @@ var mosca = require('mosca'),
 
 var config = require('./config');
 
-var rcListenerChannel = config.redis.listener || "mq:listener",
-    rcSenderChannel = config.redis.listener || "mq:sender";
+var rcListenerChannel = config.listener || "mq:listener";
 
 var mqBackendSettings = {
     type: 'redis',
@@ -27,12 +27,17 @@ var mqSettings = {
 };
 
 var mqAuthenticateHandle = function(client, username, password, callback) {
-    if (username.substring(0, 6) === "000000") {
+    if (!config.hook.auth_url) {
         callback(null, true);
         return;
     }
 
-    if (!config.hook.auth_url) {
+    if (!(username && password)) {
+        callback(null, false);
+        return;
+    }
+
+    if (config.debug && username.substring(0, 6) === "000000") {
         callback(null, true);
         return;
     }
@@ -78,12 +83,12 @@ var mqAuthenticateHandle = function(client, username, password, callback) {
 };
 
 var mqAuthorizePublishHandle = function(client, topic, payload, callback) {
-    if (client.user && client.user.substring(0, 6) === "000000") {
+    if (!config.hook.auth_pub_url) {
         callback(null, true);
         return;
     }
 
-    if (!config.hook.auth_pub_url) {
+    if (config.debug && client.user && client.user.substring(0, 6) === "000000") {
         callback(null, true);
         return;
     }
@@ -128,12 +133,12 @@ var mqAuthorizePublishHandle = function(client, topic, payload, callback) {
 };
 
 var mqAuthorizeSubscribeHandle = function(client, topic, callback) {
-    if (client.user && client.user.substring(0, 6) === "000000") {
+    if (!config.hook.auth_sub_url) {
         callback(null, true);
         return;
     }
 
-    if (!config.hook.auth_sub_url) {
+    if (config.debug && client.user && client.user.substring(0, 6) === "000000") {
         callback(null, true);
         return;
     }
@@ -231,14 +236,14 @@ var mqPublishedHandle = function(packet, client) {
 };
 
 var mqSetupHandle = function() {
-    server.authenticate = mqAuthenticateHandle;
-    server.authorizePublish = mqAuthorizePublishHandle;
-    server.authorizeSubscribe = mqAuthorizeSubscribeHandle;
+    mqttServer.authenticate = mqAuthenticateHandle;
+    mqttServer.authorizePublish = mqAuthorizePublishHandle;
+    mqttServer.authorizeSubscribe = mqAuthorizeSubscribeHandle;
     console.log('MQTT Moscer server is up and running');
 };
 
 var rcSubscribeHanlde = function(channel, count) {
-    console.log('Listener is ready on channel:', channel);
+    console.log('Listener is ready on channel:', '<' + channel + '>');
 };
 
 var rcMessageHandle = function (channel, message) {
@@ -246,7 +251,7 @@ var rcMessageHandle = function (channel, message) {
         try {
             var packet = JSON.parse(message);
             if (packet && packet.topic) {
-                server.ascoltatore.publish(packet.topic, packet.payload, function() {
+                mqttServer.ascoltatore.publish(packet.topic, packet.payload, function() {
                   console.log('Message published to the topic', packet.topic, packet.payload);
                 });
             }
@@ -256,14 +261,19 @@ var rcMessageHandle = function (channel, message) {
     }
 };
 
-var server = new mosca.Server(mqSettings);
-server.on('ready', mqSetupHandle);
-server.on('clientConnected', mqClientConnectedHandle);
-server.on('clientDisconnecting', mqClientDisconnectingHandle);
-server.on('clientDisconnected', mqClientDisconnectedHandle);
-server.on('published', mqPublishedHandle);
+var httpServer = http.createServer();
+
+var mqttServer = new mosca.Server(mqSettings);
+mqttServer.on('ready', mqSetupHandle);
+mqttServer.on('clientConnected', mqClientConnectedHandle);
+mqttServer.on('clientDisconnecting', mqClientDisconnectingHandle);
+mqttServer.on('clientDisconnected', mqClientDisconnectedHandle);
+mqttServer.on('published', mqPublishedHandle);
+mqttServer.attachHttpServer(httpServer);
 
 var redisClient = redis.createClient();
 redisClient.subscribe(rcListenerChannel);
 redisClient.on("subscribe", rcSubscribeHanlde);
 redisClient.on("message", rcMessageHandle);
+
+httpServer.listen(config.http.port || 1885);

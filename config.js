@@ -4,6 +4,11 @@ var config = {
         port: 1883
     },
 
+    // HTTP server and websocket configuration.
+    http: {
+        port: 1885
+    },
+
     // HTTP hooks, the events emited will be
     // forwarded to specified url address.
     hook: {
@@ -71,7 +76,10 @@ var config = {
     listener: "mq:listener",
 
     // Redis configuration, host or port, etc.
-    redis: {}
+    redis: {},
+
+    // Debug switch
+    debug: true
 };
 
 module.exports = config;
