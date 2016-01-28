@@ -47,7 +47,7 @@ var config = {
 
         //  auth_sub_url: "http://localhost:3000/api/v1/auth/sub",
 
-        // client_url is a hook for client state notification.
+        // client_state_url is a hook for client state notification to web server.
         // method: POST
         // params:
         //     cid,   client username
@@ -55,9 +55,20 @@ var config = {
         //     ts,    timestamp
         // returns:
         //     no returns
-        //  client_url: "http://localhost:3000/api/v1/client",
+        //  client_state_url: "http://localhost:3000/api/v1/client/state",
 
-        // message_url is a hook for message forwarding.
+        // client_data_url is a hook for updating client data in web server.
+        // method: POST
+        // params:
+        //     cid,   client username
+        //     key,   client data key, this is the 3rd part of topic
+        //     data,  data value, from payload
+        //     ts,    timestamp
+        // returns:
+        //     no returns
+        //  client_data_url: "http://localhost:3000/api/v1/client/data",
+
+        // message_url is a hook for message forwarding to web server.
         // method: POST
         // params:
         //     cid,      client username

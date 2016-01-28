@@ -6,8 +6,11 @@ var mosca = require('mosca'),
     crypto = require('crypto');
 
 var config = require('./config');
-
 var rcListenerChannel = config.listener || "mq:listener";
+
+var mqDataPrefix = "DAT",
+    mqLotPrefix = "LOT",
+    mqPrefixSet = [ mqDataPrefix, mqLotPrefix ];
 
 var mqBackendSettings = {
     type: 'redis',
@@ -93,6 +96,14 @@ var mqAuthorizePublishHandle = function(client, topic, payload, callback) {
         return;
     }
 
+    fields = topic.split("/");
+    if (fields.length > 1 &&
+       mqPrefixSet.indexOf(fields[0]) >= 0 &&
+       fields[1] === client.user) {
+        callback(null, true);
+        return;
+    }
+
     var cacheKey = function() {
         return 'authorization:pub:' + client.user + ":" + topic;
     };
@@ -143,6 +154,14 @@ var mqAuthorizeSubscribeHandle = function(client, topic, callback) {
         return;
     }
 
+    fields = topic.split("/");
+    if (fields.length > 1 &&
+       mqPrefixSet.indexOf(fields[0]) >= 0 &&
+       fields[1] === client.user) {
+        callback(null, true);
+        return;
+    }
+
     var cacheKey = function() {
         return 'authorization:sub:' + client.user + ":" + topic;
     };
@@ -180,10 +199,10 @@ var mqAuthorizeSubscribeHandle = function(client, topic, callback) {
 var mqClientConnectedHandle = function(client) {
     console.log('Client connected', client.id);
 
-    if (!config.hook.client_url) return;
+    if (!config.hook.client_state_url) return;
 
     request.post({
-        url: config.hook.client_url,
+        url: config.hook.client_state_url,
         form: {
             cid: client.user,
             state: "online",
@@ -201,10 +220,10 @@ var mqClientDisconnectingHandle = function(client) {
 var mqClientDisconnectedHandle = function(client) {
     console.log('Client disconnected:', client.id);
 
-    if (!config.hook.client_url) return;
+    if (!config.hook.client_state_url) return;
 
     request.post({
-        url: config.hook.client_url,
+        url: config.hook.client_state_url,
         form: {
             cid: client.user,
             state: "offline",
@@ -220,19 +239,38 @@ var mqPublishedHandle = function(packet, client) {
 
     console.log('Published', packet.payload);
 
-    if (!config.hook.message_url) return;
+    fields = packet.topic.split("/");
 
-    request.post({
-        url: config.hook.message_url,
-        form: {
-            cid: client.user,
-            topic: packet.topic,
-            payload: packet.payload.toString(),
-            ts: Date.now()
-        }
-    }, function (err, resp, body) {
-        console.log('Client message forwarded', err.toString());
-    });
+    if (config.hook.client_data_url &&
+        fields.length > 1 &&
+        fields[0] == mqDataPrefix &&
+        fields[1] == client.user) {
+        request.post({
+            url: config.hook.client_data_url,
+            form: {
+                cid: client.user,
+                key: fields.slice(2).join("/").trim(),
+                data: packet.payload.toString(),
+                ts: Date.now()
+            }
+        }, function (err, resp, body) {
+            console.log('Client data updated', err.toString());
+        });
+    }
+
+    if (config.hook.message_url) {
+        request.post({
+            url: config.hook.message_url,
+            form: {
+                cid: client.user,
+                topic: packet.topic,
+                payload: packet.payload.toString(),
+                ts: Date.now()
+            }
+        }, function (err, resp, body) {
+            console.log('Client message forwarded', err.toString());
+        });
+    }
 };
 
 var mqSetupHandle = function() {
