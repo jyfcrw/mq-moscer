@@ -77,7 +77,12 @@ var mqAuthenticateHandle = function(client, username, password, callback) {
             signature.token = body.token;
             cache.put(cacheKey(), signature, 1000 * 60 * 5);
         }
-        console.log('Client signature updated', err.toString());
+
+        if (err) {
+            console.log('Client signature updating failed', err.toString());
+        } else {
+            console.log('Client signature updated');
+        }
 
         var authorized = (signature.token === authenticateToken(signature.timestamp));
         if (authorized) client.user = username;
@@ -138,7 +143,12 @@ var mqAuthorizePublishHandle = function(client, topic, payload, callback) {
             cache.put(cacheKey(), passport, 1000 * 60 * 5);
         }
 
-        console.log('Client pub passport updated', err.toString());
+        if (err) {
+            console.log('Client pub passport updating failed', err.toString());
+        } else {
+            console.log('Client pub passport updated');
+        }
+
         callback(null, authorizePublish(passport));
     });
 };
@@ -191,7 +201,12 @@ var mqAuthorizeSubscribeHandle = function(client, topic, callback) {
             cache.put(cacheKey(), passport, 1000 * 60 * 5);
         }
 
-        console.log('Client sub passport updated', err.toString());
+        if (err) {
+            console.log('Client sub passport updating failed', err.toString());
+        } else {
+            console.log('Client sub passport updated');
+        }
+
         callback(null, authorizeSubscribe(passport));
     });
 };
@@ -209,7 +224,11 @@ var mqClientConnectedHandle = function(client) {
             ts: Date.now()
         }
     }, function (err, resp, body) {
-        console.log('Client state updated [online]', err.toString());
+        if (err) {
+            console.log('Client state updating failed', err.toString());
+        } else {
+            console.log('Client state updated [online]');
+        }
     });
 };
 
@@ -230,7 +249,11 @@ var mqClientDisconnectedHandle = function(client) {
             ts: Date.now()
         }
     }, function (err, resp, body) {
-        console.log('Client state updated [offline]', err.toString());
+        if (err) {
+            console.log('Client state updating failed', err.toString());
+        } else {
+            console.log('Client state updated [offline]');
+        }
     });
 };
 
@@ -254,7 +277,11 @@ var mqPublishedHandle = function(packet, client) {
                 ts: Date.now()
             }
         }, function (err, resp, body) {
-            console.log('Client data updated', err.toString());
+            if (err) {
+                console.log('Client data updating failed', err.toString());
+            } else {
+                console.log('Client data updated');
+            }
         });
     }
 
@@ -268,7 +295,11 @@ var mqPublishedHandle = function(packet, client) {
                 ts: Date.now()
             }
         }, function (err, resp, body) {
-            console.log('Client message forwarded', err.toString());
+            if (err) {
+                console.log('Client message forwarding failed', err.toString());
+            } else {
+                console.log('Client message forwarded');
+            }
         });
     }
 };
