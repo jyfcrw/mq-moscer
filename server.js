@@ -75,7 +75,7 @@ var mqAuthenticateHandle = function(client, username, password, callback) {
     }, function (err, resp, body) {
         if ( resp && resp.statusCode == 200 ) {
             signature.token = body.token;
-            cache.put(cacheKey(), signature, 1000 * 60 * 5);
+            cache.put(cacheKey(), signature, 1000 * 60 * 3);
         }
 
         if (err) {
@@ -96,7 +96,7 @@ var mqAuthorizePublishHandle = function(client, topic, payload, callback) {
         return;
     }
 
-    if (config.debug && client.user && client.user.substring(0, 6) === "000000") {
+    if (config.debug && !client.user) {
         callback(null, true);
         return;
     }
@@ -134,13 +134,14 @@ var mqAuthorizePublishHandle = function(client, topic, payload, callback) {
         form: {
             cid: client.user,
             topic: topic,
+            data: payload.toString(),
             ts: passport.timestamp
         }
     }, function (err, resp, body) {
         if ( resp && resp.statusCode == 200 ) {
             passport.mode = body.mode || "basic";
             passport.value = body.value;
-            cache.put(cacheKey(), passport, 1000 * 60 * 5);
+            cache.put(cacheKey(), passport, 1000 * 60 * 3);
         }
 
         if (err) {
@@ -159,7 +160,7 @@ var mqAuthorizeSubscribeHandle = function(client, topic, callback) {
         return;
     }
 
-    if (config.debug && client.user && client.user.substring(0, 6) === "000000") {
+    if (config.debug && !client.user) {
         callback(null, true);
         return;
     }
@@ -198,7 +199,7 @@ var mqAuthorizeSubscribeHandle = function(client, topic, callback) {
     }, function (err, resp, body) {
         if ( resp && resp.statusCode == 200 ) {
             passport.value = body.value;
-            cache.put(cacheKey(), passport, 1000 * 60 * 5);
+            cache.put(cacheKey(), passport, 1000 * 60 * 3);
         }
 
         if (err) {
@@ -215,6 +216,8 @@ var mqClientConnectedHandle = function(client) {
     console.log('Client connected', client.id);
 
     if (!config.hook.client_state_url) return;
+
+    if (config.debug && !client.user) return;
 
     request.post({
         url: config.hook.client_state_url,
@@ -240,6 +243,8 @@ var mqClientDisconnectedHandle = function(client) {
     console.log('Client disconnected:', client.id);
 
     if (!config.hook.client_state_url) return;
+
+    if (config.debug && !client.user) return;
 
     request.post({
         url: config.hook.client_state_url,
