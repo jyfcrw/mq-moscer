@@ -24,6 +24,7 @@ var mqBackendSettings = {
 var mqSettings = {
     port: config.mqtt.port || 1883,
     backend: mqBackendSettings,
+    logger: config.debug ? { level: 'debug'} : {},
     persistence: {
         factory: mosca.persistence.Redis
     }

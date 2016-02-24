@@ -5,6 +5,7 @@
 ### Installation
 
 ~~~~
+  $ apt-get install libzmq-dev
   $ npm install
   $ nodejs server.js
 ~~~~
