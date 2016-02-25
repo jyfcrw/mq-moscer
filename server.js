@@ -10,7 +10,8 @@ var rcListenerChannel = config.listener || "mq:listener";
 
 var mqDataPrefix = "DAT",
     mqLotPrefix = "LOT",
-    mqPrefixSet = [ mqDataPrefix, mqLotPrefix ];
+    mqPingPrefix = "PING",
+    mqPrefixSet = [ mqDataPrefix, mqLotPrefix, mqPingPrefix ];
 
 var mqBackendSettings = {
     type: 'redis',
@@ -269,6 +270,12 @@ var mqPublishedHandle = function(packet, client) {
     console.log('Published', packet.payload);
 
     fields = packet.topic.split("/");
+
+    if (fields.length > 1 &&
+        fields[0] == mqPingPrefix &&
+        fields[1] == client.user) {
+        return;
+    }
 
     if (config.hook.client_data_url &&
         fields.length > 1 &&
